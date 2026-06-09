@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voronoi Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,200;1,9..144,200&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0d0f;--sur:#14141a;--su2:#1b1b22;--su3:#22222b;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.13);--b3:rgba(255,255,255,.22);
+  --tx:#d8d8e8;--t2:#8080a0;--t3:#454560;
+  --ac:#7c6ff7;--a2:#3ecfc6;--a3:#f76f6f;--a4:#f5d060;
+}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;line-height:1.5;overflow:hidden}
+.app{display:grid;grid-template-columns:292px 1fr;grid-template-rows:46px 1fr;height:100vh}
+
+header{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 16px;border-bottom:1px solid var(--b1);background:var(--sur)}
+.logo{font-family:'Fraunces',serif;font-size:16px;font-weight:200;color:var(--tx)}
+.logo em{color:var(--ac);font-style:italic}
+.hsp{flex:1}
+.tog{display:flex;align-items:center;gap:7px;padding:4px 11px;border-radius:4px;border:1px solid var(--b2);background:var(--su2);cursor:pointer;user-select:none;transition:border-color .15s}
+.tog:hover{border-color:var(--b3)}
+.tog.on{border-color:var(--ac);background:rgba(124,111,247,.09)}
+.tog .lbl{font-size:10px;color:var(--t2)}
+.tog.on .lbl{color:var(--ac)}
+.sw{width:24px;height:13px;border-radius:7px;background:var(--su3);position:relative;flex-shrink:0;transition:background .15s}
+.tog.on .sw{background:var(--ac)}
+.sw::after{content:'';position:absolute;width:9px;height:9px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .15s}
+.tog.on .sw::after{transform:translateX(11px)}
+
+.sidebar{background:var(--sur);border-right:1px solid var(--b1);display:flex;flex-direction:column;overflow:hidden}
+.sb-scroll{flex:1;overflow-y:auto;padding:11px 13px}
+.sb-foot{padding:11px 13px;border-top:1px solid var(--b1);flex-shrink:0}
+.slb{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:7px}
+.div{height:1px;background:var(--b1);margin:11px 0}
+
+.ilist{display:flex;flex-direction:column;gap:2px}
+.it{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:4px;border:1px solid transparent;cursor:pointer;transition:all .12s}
+.it:hover{background:var(--su2)}
+.it.sel{border-color:var(--ac);background:rgba(124,111,247,.07)}
+.it.on{border-color:var(--a2);background:rgba(62,207,198,.06)}
+.rdot{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--b3);flex-shrink:0;position:relative}
+.it.sel .rdot{border-color:var(--ac)}
+.rdot::after{content:'';position:absolute;width:5px;height:5px;border-radius:50%;background:var(--ac);top:2px;left:2px;opacity:0}
+.it.sel .rdot::after{opacity:1}
+.cbox{width:11px;height:11px;border-radius:2px;border:1.5px solid var(--b3);flex-shrink:0;position:relative}
+.it.on .cbox{background:var(--a2);border-color:var(--a2)}
+.cbox::after{content:'';position:absolute;width:5px;height:3px;border-left:1.5px solid #0d0d0f;border-bottom:1.5px solid #0d0d0f;top:2.5px;left:2px;transform:rotate(-45deg);opacity:0}
+.it.on .cbox::after{opacity:1}
+.iname{font-size:11px;color:var(--tx);flex:1}
+.tag{font-size:8px;padding:1px 4px;border-radius:2px;letter-spacing:.03em;flex-shrink:0}
+.tm{background:rgba(62,207,198,.08);border:1px solid rgba(62,207,198,.22);color:var(--a2)}
+.tf{background:rgba(124,111,247,.09);border:1px solid rgba(124,111,247,.28);color:var(--ac)}
+.tw{background:rgba(245,208,96,.08);border:1px solid rgba(245,208,96,.22);color:var(--a4)}
+.tp{background:rgba(247,111,111,.08);border:1px solid rgba(247,111,111,.22);color:var(--a3)}
+
+.pb{display:none;flex-direction:column;gap:5px;padding:5px 8px 5px 26px}
+.prow{display:flex;align-items:center;gap:6px}
+.plbl{color:var(--t2);font-size:10px;flex:1;white-space:nowrap}
+.pval{color:var(--a2);font-size:10px;min-width:30px;text-align:right;flex-shrink:0}
+input[type=range]{-webkit-appearance:none;width:70px;height:2px;border-radius:1px;background:var(--su3);outline:none;cursor:pointer;border:none;flex-shrink:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:9px;height:9px;border-radius:50%;background:var(--ac);cursor:pointer}
+.gp{display:flex;flex-direction:column;gap:5px}
+select{font-family:'DM Mono',monospace;font-size:10px;background:var(--su3);color:var(--tx);border:1px solid var(--b2);border-radius:3px;padding:2px 4px;outline:none;cursor:pointer}
+.rx{display:none;flex-direction:column;gap:5px;padding-top:7px;border-top:1px solid var(--b1);margin-top:3px}
+.rx.vis{display:flex}
+
+.sp{position:absolute;z-index:20;background:rgba(18,18,24,.97);border:1px solid var(--b3);border-radius:6px;padding:10px 13px;min-width:186px;box-shadow:0 4px 24px rgba(0,0,0,.55);display:none;max-height:340px;overflow-y:auto}
+.sp.vis{display:block}
+.sp-hd{font-size:11px;color:var(--ac);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sp-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.sp-x{margin-left:auto;cursor:pointer;color:var(--t3);font-size:15px;line-height:1;padding:0 2px}
+.sp-x:hover{color:var(--tx)}
+.sp-sec{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:8px 0 4px}
+.sp-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sp-lbl{color:var(--t2);font-size:10px;flex:1}
+.sp-val{color:var(--a2);font-size:10px;min-width:28px;text-align:right;flex-shrink:0}
+
+.cw{position:relative;overflow:hidden;background:var(--bg)}
+#cv{display:block;cursor:crosshair}
+.cbtns{position:absolute;bottom:11px;left:50%;transform:translateX(-50%);display:flex;gap:6px}
+.cbtn{font-family:'DM Mono',monospace;font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--b2);background:rgba(14,14,20,.9);color:var(--t2);cursor:pointer;transition:all .12s;white-space:nowrap}
+.cbtn:hover{border-color:var(--ac);color:var(--ac)}
+.hud{position:absolute;top:9px;right:9px;background:rgba(13,13,15,.93);border:1px solid var(--b2);border-radius:4px;padding:8px 12px;font-size:10px;min-width:155px}
+.hrow{display:flex;justify-content:space-between;gap:12px;color:var(--t2);margin-bottom:2px}
+.hrow span:last-child{color:var(--tx)}
+.rleg{position:absolute;top:9px;left:9px;background:rgba(13,13,15,.93);border:1px solid var(--b2);border-radius:4px;padding:8px 12px;display:none}
+.rleg.vis{display:block}
+.lrow{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--t2);margin-bottom:3px}
+.lsw{width:16px;height:3px;border-radius:1px;flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">Voronoi <em>Explorer</em></div>
+  <div class="hsp"></div>
+  <div class="tog" id="roughBtn" onclick="toggleRough()">
+    <div class="sw"></div><span class="lbl">rough set approximation</span>
+  </div>
+</header>
+
+<div class="sidebar">
+  <div class="sb-scroll">
+    <div class="slb">metric — one at a time</div>
+    <div class="ilist" id="metricList"></div>
+    <div class="div"></div>
+    <div class="slb">modifiers — mix freely</div>
+    <div class="ilist" id="modList"></div>
+  </div>
+  <div class="sb-foot">
+    <div class="slb">global</div>
+    <div class="gp">
+      <div class="prow">
+        <span class="plbl">sites</span>
+        <input type="range" min="2" max="50" value="12" id="slN" oninput="gs('N',+this.value)">
+        <span class="pval" id="vN">12</span>
+      </div>
+      <div class="prow">
+        <span class="plbl">resolution</span>
+        <input type="range" min="1" max="4" value="2" step="1" id="slR" oninput="gs('R',+this.value)">
+        <span class="pval" id="vR">½</span>
+      </div>
+      <div class="prow">
+        <span class="plbl">color</span>
+        <select id="cmode" onchange="schedRender()">
+          <option value="cell">by cell</option>
+          <option value="member">membership μ</option>
+          <option value="blend">gradient</option>
+        </select>
+      </div>
+      <div class="rx" id="rx">
+        <div class="prow">
+          <span class="plbl">α-cut</span>
+          <input type="range" min="1" max="99" value="55" id="slA" oninput="gs('A',+this.value)">
+          <span class="pval" id="vA">0.55</span>
+        </div>
+        <div class="prow">
+          <span class="plbl">grain ε (px)</span>
+          <input type="range" min="2" max="80" value="20" id="slE" oninput="gs('E',+this.value)">
+          <span class="pval" id="vE">20</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="cw" id="wrap">
+  <canvas id="cv"></canvas>
+
+  <div class="sp" id="sitePanel">
+    <div class="sp-hd">
+      <div class="sp-dot" id="spDot"></div>
+      <span id="spTitle">site</span>
+      <span class="sp-x" onclick="closeSP()">×</span>
+    </div>
+    <div id="spBody"></div>
+  </div>
+
+  <div class="rleg" id="rleg">
+    <div class="lrow"><div class="lsw" style="background:#7c6ff7"></div>lower approx — definitely in cell</div>
+    <div class="lrow"><div class="lsw" style="background:rgba(62,207,198,.7)"></div>boundary region</div>
+    <div class="lrow"><div class="lsw" style="background:rgba(255,255,255,.08);border:1px dashed rgba(255,255,255,.18)"></div>outside upper approx</div>
+  </div>
+  <div class="hud">
+    <div class="hrow"><span>sites</span><span id="hS">12</span></div>
+    <div class="hrow"><span>metric</span><span id="hM">euclidean</span></div>
+    <div class="hrow"><span>modifiers</span><span id="hMod">—</span></div>
+    <div class="hrow"><span>rough</span><span id="hR">off</span></div>
+  </div>
+  <div class="cbtns">
+    <div class="cbtn" onclick="randomSites()">randomize</div>
+    <div class="cbtn" onclick="clearSites()">clear</div>
+  </div>
+</div>
+</div>
+
+<script>
+const PAL=[
+  [120,105,245],[55,205,195],[240,100,100],[235,195,65],
+  [100,195,255],[255,145,75],[175,115,255],[75,215,135],
+  [255,105,175],[65,175,255],[195,255,95],[255,75,125],
+  [135,255,195],[255,185,45],[95,135,255],[255,135,95],
+  [55,235,175],[255,95,145],[145,195,255],[195,255,145],
+];
+
+// ── METRICS ────────────────────────────────────────────────────────────────────
+const METRICS=[
+  {id:'euclidean',name:'euclidean',tag:'m',params:[],
+    dist:(dx,dy)=>Math.sqrt(dx*dx+dy*dy)},
+  {id:'manhattan',name:'manhattan L¹',tag:'m',params:[],
+    dist:(dx,dy)=>Math.abs(dx)+Math.abs(dy)},
+  {id:'chebyshev',name:'chebyshev L∞',tag:'m',params:[],
+    dist:(dx,dy)=>Math.max(Math.abs(dx),Math.abs(dy))},
+  {id:'minkowski',name:'minkowski Lᵖ',tag:'m',
+    params:[{id:'p',lbl:'p exponent',min:.5,max:8,step:.1,val:3,fmt:v=>v.toFixed(1)}],
+    dist:(dx,dy,p)=>(Math.abs(dx)**p+Math.abs(dy)**p)**(1/p)},
+  {id:'aniso',name:'anisotropic',tag:'m',
+    params:[
+      {id:'ratio',lbl:'axis ratio',min:.1,max:6,step:.05,val:2.5,fmt:v=>v.toFixed(2)},
+      {id:'angle',lbl:'angle °',min:0,max:180,step:1,val:45,fmt:v=>v.toFixed(0)+'°'}
+    ],
+    dist:(dx,dy,ratio,angle)=>{
+      const a=angle*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+      const u=dx*c+dy*s,v=-dx*s+dy*c;
+      return Math.sqrt(u*u+(v/ratio)**2);
+    }},
+  {id:'hyperbolic',name:'hyperbolic (Poincaré)',tag:'m',
+    params:[{id:'R',lbl:'disk radius %',min:20,max:48,step:1,val:42,fmt:v=>v+'%'}],
+    fullArgs:true,
+    dist:(dx,dy,R,px,py,sx,sy,W,H)=>{
+      const r=R/100*Math.min(W,H);
+      const nx=(px-W/2)/r,ny=(py-H/2)/r;
+      const mx=(sx-W/2)/r,my=(sy-H/2)/r;
+      const nr2=nx*nx+ny*ny,mr2=mx*mx+my*my;
+      if(nr2>=.999||mr2>=.999) return 1e9;
+      const ddx=nx-mx,ddy=ny-my;
+      return Math.acosh(Math.max(1,1+2*(ddx*ddx+ddy*ddy)/((1-nr2)*(1-mr2))));
+    }},
+  {id:'taxirot',name:'rotated taxicab',tag:'m',
+    params:[{id:'rot',lbl:'angle °',min:0,max:90,step:1,val:30,fmt:v=>v+'°'}],
+    dist:(dx,dy,rot)=>{
+      const a=rot*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+      return Math.abs(dx*c+dy*s)+Math.abs(-dx*s+dy*c);
+    }},
+];
+
+// ── MODIFIERS ─────────────────────────────────────────────────────────────────
+const MODIFIERS=[
+  // Standard distance modifiers
+  {
+    id:'addweight',name:'additive weights',tag:'w',
+    params:[{id:'base',lbl:'base spread',min:0,max:150,step:1,val:60,fmt:v=>v|0}],
+    siteProps:[{id:'w',lbl:'weight offset',min:-120,max:120,step:1,val:0,fmt:v=>(v>=0?'+':'')+v}],
+    modify:(d,si,gp,sp)=>d-(sp.w+(si%5)*(gp.base/4))
+  },
+  {
+    id:'power',name:'power (mult. weights)',tag:'w',
+    params:[{id:'base',lbl:'base spread',min:.05,max:2,step:.05,val:.8,fmt:v=>v.toFixed(2)}],
+    siteProps:[{id:'w',lbl:'weight ×',min:.1,max:4,step:.05,val:1,fmt:v=>v.toFixed(2)}],
+    modify:(d,si,gp,sp)=>{const w=sp.w*(0.5+(si%7)*(gp.base/6));return d/(w*w);}
+  },
+  {
+    id:'orderk',name:'order-k',tag:'f',
+    params:[{id:'k',lbl:'k (rank)',min:1,max:8,step:1,val:2,fmt:v=>v|0}],
+    siteProps:[],
+    special:'orderk'
+  },
+  // Gaussian: winner = argmax exp(-d²/2σ²)
+  // Genuinely changes boundaries: at the boundary two sites have equal max Gaussian,
+  // but that maximum is low when σ is small → soft, fading zones appear near boundaries.
+  {
+    id:'gauss',name:'gaussian membership',tag:'f',
+    params:[{id:'sig',lbl:'σ bandwidth',min:5,max:350,step:1,val:80,fmt:v=>v|0}],
+    siteProps:[{id:'sig',lbl:'σ override',min:5,max:350,step:1,val:80,fmt:v=>v|0}],
+    special:'gauss'
+  },
+  {
+    id:'centroid',name:'centroidal pull',tag:'f',
+    params:[{id:'pull',lbl:'pull strength',min:0,max:100,step:1,val:50,fmt:v=>v|0}],
+    siteProps:[{id:'pull',lbl:'pull ×',min:0,max:3,step:.05,val:1,fmt:v=>v.toFixed(2)}],
+    modify:(d,si,gp,sp,px,py,sx,sy,W,H)=>{
+      return d+(gp.pull/100)*sp.pull*Math.sqrt((sx-W/2)**2+(sy-H/2)**2)*0.35;
+    }
+  },
+
+  // ── PROBABILISTIC VORONOI — Agarwal et al. 2016 (arXiv:1606.00112) ──────────
+  // Each site i = uncertain disk of radius r_i centered at c_i.
+  //   δ_i(q) = max(d(q,c_i) − r_i, 0)      min possible dist from q to disk i
+  //   Δ(q)   = min_j (d(q,c_j) + r_j)       lower envelope of max-distances
+  //   i ∈ NN≠0(q)  iff  δ_i(q) < Δ(q)
+  //   winner = argmin δ_i  among i where δ_i < Δ(q)
+  //   μ      = 1 − δ_winner / Δ(q)
+  {
+    id:'probvoronoi',name:'probabilistic (uncertain sites)',tag:'p',
+    params:[{id:'baseR',lbl:'base radius',min:0,max:150,step:1,val:35,fmt:v=>v|0}],
+    siteProps:[{id:'r',lbl:'uncertainty r',min:0,max:200,step:1,val:35,fmt:v=>v|0}],
+    special:'prob'
+  },
+
+  // ── MOST LIKELY VORONOI DIAGRAM — Kumar et al. 2016 (mlvd.pdf) ──────────────
+  // Each site i has existence probability π_i ∈ (0,1).
+  // For query x, let B_i(x) = { j : d(x,s_j) < d(x,s_i) }  (sites strictly closer than i).
+  //   Π_nn(s_i, x) = π_i × ∏_{j ∈ B_i(x)} (1 − π_j)
+  // Winner = argmax Π_nn(s_i, x).
+  // A high-probability site can win even if not the nearest, because many low-prob
+  // closer sites collectively reduce the probability product.
+  // μ = Π_nn(winner) / Π_nn(winner) + 2nd_best  (relative dominance)
+  {
+    id:'mlvd',name:'most likely (MLVD)',tag:'p',
+    params:[],
+    siteProps:[{id:'pi',lbl:'exist. prob π',min:.01,max:.99,step:.01,val:.5,fmt:v=>v.toFixed(2)}],
+    special:'mlvd'
+  },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let sites=[];
+let W=0,H=0;
+let activeMetric='euclidean';
+let activeMods=new Set();
+let mparams={},dparams={};
+METRICS.forEach(m=>{mparams[m.id]={};m.params.forEach(p=>mparams[m.id][p.id]=p.val);});
+MODIFIERS.forEach(m=>{dparams[m.id]={};m.params.forEach(p=>dparams[m.id][p.id]=p.val);});
+let useRough=false,alpha=.55,eps=20,numSites=12,resDiv=2;
+let selectedSite=-1;
+
+function mkSite(x,y){
+  const props={};
+  MODIFIERS.forEach(m=>{props[m.id]={};m.siteProps.forEach(p=>props[m.id][p.id]=p.val);});
+  return {x,y,props};
+}
+function getSP(si,mid,pid){
+  return sites[si]?.props?.[mid]?.[pid]??
+    MODIFIERS.find(m=>m.id===mid)?.siteProps.find(p=>p.id===pid)?.val??0;
+}
+
+// ── CANVAS ────────────────────────────────────────────────────────────────────
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+let cellGrid=null,muGrid=null,roughGrid=null,rW=0,rH=0;
+
+function resize(){
+  const r=document.getElementById('wrap').getBoundingClientRect();
+  W=r.width;H=r.height;cv.width=W;cv.height=H;schedRender();
+}
+
+function baseDist(metric,px,py,sx,sy){
+  const dx=px-sx,dy=py-sy;
+  const pv=metric.params.map(p=>mparams[metric.id][p.id]);
+  if(metric.fullArgs) return metric.dist(dx,dy,...pv,px,py,sx,sy,W,H);
+  return metric.dist(dx,dy,...pv);
+}
+
+function applyStdMods(d,si,px,py){
+  for(const mid of activeMods){
+    const mod=MODIFIERS.find(x=>x.id===mid);
+    if(!mod||!mod.modify) continue;
+    d=mod.modify(d,si,dparams[mid],sites[si].props[mid],px,py,sites[si].x,sites[si].y,W,H);
+  }
+  return d;
+}
+
+// ── BUILD GRID ────────────────────────────────────────────────────────────────
+function buildGrid(){
+  const metric=METRICS.find(m=>m.id===activeMetric);
+  const n=sites.length;
+  rW=Math.ceil(W/resDiv); rH=Math.ceil(H/resDiv);
+  cellGrid=new Int16Array(rW*rH);
+  muGrid=new Float32Array(rW*rH);
+
+  const hasGauss=activeMods.has('gauss');
+  const hasProb=activeMods.has('probvoronoi');
+  const hasMlvd=activeMods.has('mlvd');
+  const hasOrderK=activeMods.has('orderk');
+  const kVal=hasOrderK?Math.max(1,Math.min(dparams['orderk'].k|0,n)):1;
+
+  // raw base distances buffer (reused each pixel)
+  const dists=new Float32Array(n);
+
+  for(let gy=0;gy<rH;gy++){
+    const py=gy*resDiv+resDiv*.5;
+    for(let gx=0;gx<rW;gx++){
+      const px=gx*resDiv+resDiv*.5;
+      let winner=0,mu=1;
+
+      // Compute base metric distance (+ std modifier transforms) for all sites
+      for(let si=0;si<n;si++){
+        let d=baseDist(metric,px,py,sites[si].x,sites[si].y);
+        d=applyStdMods(d,si,px,py);
+        dists[si]=d;
+      }
+
+      if(hasMlvd){
+        // ── MOST LIKELY VORONOI DIAGRAM (Kumar et al. 2016) ──────────────────
+        // Π_nn(s_i, x) = π_i × ∏_{j: d(x,s_j) < d(x,s_i)} (1 − π_j)
+        // winner = argmax Π_nn
+        const pis=new Float32Array(n);
+        for(let si=0;si<n;si++) pis[si]=getSP(si,'mlvd','pi');
+
+        // Compute Π_nn for each site
+        const scores=new Float32Array(n);
+        for(let si=0;si<n;si++){
+          let prod=pis[si];
+          for(let sj=0;sj<n;sj++){
+            if(sj!==si && dists[sj]<dists[si]) prod*=(1-pis[sj]);
+          }
+          scores[si]=prod;
+        }
+        // Winner
+        let best=-1;
+        for(let si=0;si<n;si++) if(scores[si]>best){best=scores[si];winner=si;}
+        // μ = winner score / sum of all scores (soft membership)
+        let sum=0;
+        for(let si=0;si<n;si++) sum+=scores[si];
+        mu=sum>0?best/sum:1;
+
+      } else if(hasProb){
+        // ── PROBABILISTIC VORONOI (Agarwal et al. 2016) ──────────────────────
+        // δ_i(q) = max(d(q,c_i) − r_i, 0)
+        // Δ(q)   = min_j (d(q,c_j) + r_j)
+        // winner = argmin δ_i  where δ_i < Δ(q)
+        // Compute Δ(q) = lower envelope of max-distances
+        let bigDelta=1e18;
+        for(let si=0;si<n;si++){
+          const r=getSP(si,'probvoronoi','r');
+          const upper=dists[si]+r;
+          if(upper<bigDelta) bigDelta=upper;
+        }
+        // Winner = argmin δ_i among candidates (those with δ_i < Δ)
+        let bestDelta=1e18;
+        winner=0;
+        for(let si=0;si<n;si++){
+          const r=getSP(si,'probvoronoi','r');
+          const delta=Math.max(dists[si]-r,0);
+          if(delta<bigDelta&&delta<bestDelta){bestDelta=delta;winner=si;}
+        }
+        mu=bigDelta>0?Math.max(0,1-bestDelta/bigDelta):1;
+
+      } else if(hasGauss){
+        // ── GAUSSIAN MEMBERSHIP ───────────────────────────────────────────────
+        // winner = argmax G_i = exp(−d_i² / 2σ_i²)
+        // μ = G_winner / Σ G_i  (soft assignment fraction)
+        // Unlike standard Voronoi: at boundaries when σ is small,
+        // G_winner → 0 even though it wins, revealing fuzzy boundary zones.
+        let bestG=-1,sumG=0;
+        for(let si=0;si<n;si++){
+          const sig=getSP(si,'gauss','sig')||dparams['gauss'].sig;
+          const G=Math.exp(-(dists[si]*dists[si])/(2*sig*sig));
+          sumG+=G;
+          if(G>bestG){bestG=G;winner=si;}
+        }
+        mu=sumG>1e-30?bestG/sumG:1;
+
+      } else if(hasOrderK){
+        // ── ORDER-K ───────────────────────────────────────────────────────────
+        // Find the k-th nearest site by partial sort
+        const order=Array.from({length:n},(_,i)=>i);
+        for(let i=0;i<kVal;i++){
+          let mi=i;
+          for(let j=i+1;j<n;j++) if(dists[order[j]]<dists[order[mi]]) mi=j;
+          const t=order[i];order[i]=order[mi];order[mi]=t;
+        }
+        winner=order[kVal-1];
+        const dw=dists[winner];
+        let dmax=dw;
+        for(let si=0;si<n;si++) if(dists[si]>dmax) dmax=dists[si];
+        mu=dmax>0?1-dw/dmax:1;
+
+      } else {
+        // ── STANDARD ─────────────────────────────────────────────────────────
+        let best=1e18,dmax=0;
+        for(let si=0;si<n;si++){
+          if(dists[si]<best){best=dists[si];winner=si;}
+          if(dists[si]>dmax) dmax=dists[si];
+        }
+        mu=dmax>0?1-best/dmax:1;
+      }
+
+      cellGrid[gy*rW+gx]=winner;
+      muGrid[gy*rW+gx]=mu;
+    }
+  }
+}
+
+// ── ROUGH SET GRID ────────────────────────────────────────────────────────────
+// Lower approx: ε-ball entirely within one cell AND μ ≥ α
+// Boundary: ε-ball crosses a cell edge OR μ < α
+function buildRoughGrid(){
+  roughGrid=new Uint8Array(rW*rH);
+  const eg=Math.ceil(eps/resDiv),eg2=eg*eg;
+  for(let gy=0;gy<rH;gy++){
+    for(let gx=0;gx<rW;gx++){
+      const gi=gy*rW+gx;
+      if(muGrid[gi]<alpha){roughGrid[gi]=1;continue;}
+      const cell=cellGrid[gi];
+      let border=false;
+      outer:for(let dy=-eg;dy<=eg;dy++){
+        for(let dx=-eg;dx<=eg;dx++){
+          if(dx*dx+dy*dy>eg2) continue;
+          const nx=gx+dx,ny=gy+dy;
+          if(nx<0||ny<0||nx>=rW||ny>=rH){border=true;break outer;}
+          if(cellGrid[ny*rW+nx]!==cell){border=true;break outer;}
+        }
+      }
+      roughGrid[gi]=border?1:0;
+    }
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+let _rid=0;
+function schedRender(){clearTimeout(_rid);_rid=setTimeout(doRender,0);}
+
+function doRender(){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#0d0d0f';ctx.fillRect(0,0,W,H);
+  if(sites.length<2){
+    ctx.fillStyle='rgba(128,128,160,.28)';
+    ctx.font='12px DM Mono,monospace';ctx.textAlign='center';
+    ctx.fillText('click canvas to place sites, or use randomize',W/2,H/2);
+    drawSites();updateHUD();return;
+  }
+  buildGrid();
+  if(useRough) buildRoughGrid();
+  const mode=document.getElementById('cmode').value;
+  const img=ctx.createImageData(W,H);
+  const d=img.data;
+  for(let gy=0;gy<rH;gy++){
+    for(let gx=0;gx<rW;gx++){
+      const gi=gy*rW+gx;
+      const cell=cellGrid[gi],mu=muGrid[gi];
+      const c=PAL[cell%PAL.length];
+      let r,g,b,a=255;
+      if(useRough){
+        if(roughGrid[gi]===0){r=c[0];g=c[1];b=c[2];}
+        else{r=(c[0]*.2+62*.8)|0;g=(c[1]*.2+207*.8)|0;b=(c[2]*.2+198*.8)|0;a=155;}
+      } else {
+        const dk=mode==='member'?mu:mode==='blend'?.05+mu*.95:.15+mu*.85;
+        r=c[0]*dk|0;g=c[1]*dk|0;b=c[2]*dk|0;
+      }
+      const px0=gx*resDiv,py0=gy*resDiv;
+      const px1=Math.min(px0+resDiv,W),py1=Math.min(py0+resDiv,H);
+      for(let py=py0;py<py1;py++){
+        for(let px=px0;px<px1;px++){
+          const i=(py*W+px)*4;d[i]=r;d[i+1]=g;d[i+2]=b;d[i+3]=a;
+        }
+      }
+    }
+  }
+  ctx.putImageData(img,0,0);
+  drawEdges();drawSites();updateHUD();
+}
+
+function drawEdges(){
+  if(!cellGrid)return;
+  ctx.strokeStyle=useRough?'rgba(62,207,198,.45)':'rgba(0,0,0,.55)';
+  ctx.lineWidth=useRough?1:.7;
+  ctx.setLineDash(useRough?[4,4]:[]);
+  ctx.beginPath();
+  for(let gy=0;gy<rH;gy++){
+    for(let gx=0;gx<rW;gx++){
+      const c=cellGrid[gy*rW+gx];
+      if(gx+1<rW&&cellGrid[gy*rW+gx+1]!==c){
+        const x=(gx+1)*resDiv,y0=gy*resDiv;ctx.moveTo(x,y0);ctx.lineTo(x,y0+resDiv);
+      }
+      if(gy+1<rH&&cellGrid[(gy+1)*rW+gx]!==c){
+        const y=(gy+1)*resDiv,x0=gx*resDiv;ctx.moveTo(x0,y);ctx.lineTo(x0+resDiv,y);
+      }
+    }
+  }
+  ctx.stroke();ctx.setLineDash([]);
+}
+
+function drawSites(){
+  sites.forEach((s,i)=>{
+    const c=PAL[i%PAL.length];
+    // Prob: draw uncertainty disk
+    if(activeMods.has('probvoronoi')){
+      const r=getSP(i,'probvoronoi','r');
+      if(r>0){
+        ctx.beginPath();ctx.arc(s.x,s.y,r,0,Math.PI*2);
+        ctx.strokeStyle=`rgba(${c[0]},${c[1]},${c[2]},.28)`;
+        ctx.lineWidth=1;ctx.setLineDash([3,3]);ctx.stroke();ctx.setLineDash([]);
+      }
+    }
+    // MLVD: draw π value above site
+    if(activeMods.has('mlvd')){
+      const pi=getSP(i,'mlvd','pi');
+      ctx.fillStyle=`rgba(${c[0]},${c[1]},${c[2]},.9)`;
+      ctx.font='9px DM Mono,monospace';ctx.textAlign='center';
+      ctx.fillText('π='+pi.toFixed(2),s.x,s.y-10);
+    }
+    const isSel=i===selectedSite;
+    ctx.beginPath();ctx.arc(s.x,s.y,isSel?7:5,0,Math.PI*2);
+    ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`;ctx.fill();
+    ctx.strokeStyle=isSel?'#fff':'rgba(255,255,255,.8)';
+    ctx.lineWidth=isSel?2:1.5;ctx.stroke();
+  });
+}
+
+function updateHUD(){
+  document.getElementById('hS').textContent=sites.length;
+  document.getElementById('hM').textContent=activeMetric;
+  document.getElementById('hMod').textContent=activeMods.size?[...activeMods].join(', '):'—';
+  document.getElementById('hR').textContent=useRough?`on α=${alpha.toFixed(2)} ε=${eps}px`:'off';
+}
+
+// ── SIDEBAR ───────────────────────────────────────────────────────────────────
+function buildSidebar(){
+  // Metrics
+  const ml=document.getElementById('metricList');ml.innerHTML='';
+  METRICS.forEach(m=>{
+    const it=document.createElement('div');
+    it.className='it'+(m.id===activeMetric?' sel':'');it.id='mi_'+m.id;
+    it.innerHTML=`<div class="rdot"></div><span class="iname">${m.name}</span><span class="tag tm">metric</span>`;
+    it.onclick=()=>{
+      activeMetric=m.id;
+      document.querySelectorAll('#metricList .it').forEach(e=>e.classList.remove('sel'));
+      it.classList.add('sel');
+      document.querySelectorAll('#metricList .pb').forEach(e=>e.style.display='none');
+      const pb=document.getElementById('mpb_'+m.id);
+      if(pb&&m.params.length) pb.style.display='flex';
+      schedRender();
+    };
+    ml.appendChild(it);
+    if(m.params.length){
+      const pb=mkPb('mpb_'+m.id,m.params,mparams[m.id]);
+      if(m.id!==activeMetric) pb.style.display='none';
+      ml.appendChild(pb);
+    }
+  });
+
+  // Modifiers
+  const modl=document.getElementById('modList');modl.innerHTML='';
+  MODIFIERS.forEach(m=>{
+    const tagCls=m.tag==='w'?'tw':m.tag==='p'?'tp':'tf';
+    const tagName=m.tag==='w'?'weighted':m.tag==='p'?'paper':'fuzzy';
+    const it=document.createElement('div');
+    it.className='it'+(activeMods.has(m.id)?' on':'');it.id='mdi_'+m.id;
+    it.innerHTML=`<div class="cbox"></div><span class="iname">${m.name}</span><span class="tag ${tagCls}">${tagName}</span>`;
+    it.onclick=()=>{
+      if(activeMods.has(m.id)) activeMods.delete(m.id);
+      else activeMods.add(m.id);
+      it.classList.toggle('on',activeMods.has(m.id));
+      const pb=document.getElementById('dpb_'+m.id);
+      if(pb) pb.style.display=activeMods.has(m.id)?'flex':'none';
+      if(selectedSite>=0) openSP(selectedSite);
+      schedRender();
+    };
+    modl.appendChild(it);
+    if(m.params.length){
+      const pb=mkPb('dpb_'+m.id,m.params,dparams[m.id]);
+      pb.style.display=activeMods.has(m.id)?'flex':'none';
+      modl.appendChild(pb);
+    }
+  });
+}
+
+function mkPb(id,params,store){
+  const pb=document.createElement('div');pb.className='pb';pb.id=id;
+  params.forEach(p=>{
+    const row=document.createElement('div');row.className='prow';
+    const vid='pv_'+id+'_'+p.id;
+    row.innerHTML=`<span class="plbl">${p.lbl}</span>
+      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${store[p.id]??p.val}">
+      <span class="pval" id="${vid}">${p.fmt(store[p.id]??p.val)}</span>`;
+    const inp=row.querySelector('input');
+    inp.addEventListener('input',e=>{
+      e.stopPropagation();store[p.id]=+inp.value;
+      document.getElementById(vid).textContent=p.fmt(+inp.value);
+      schedRender();
+    });
+    pb.appendChild(row);
+  });
+  return pb;
+}
+
+// ── SITE PANEL ────────────────────────────────────────────────────────────────
+function openSP(si){
+  selectedSite=si;
+  const panel=document.getElementById('sitePanel');
+  const s=sites[si];
+  const c=PAL[si%PAL.length];
+  document.getElementById('spDot').style.background=`rgb(${c[0]},${c[1]},${c[2]})`;
+  document.getElementById('spTitle').textContent=`site ${si+1}`;
+  const body=document.getElementById('spBody');body.innerHTML='';
+
+  const active=MODIFIERS.filter(m=>activeMods.has(m.id)&&m.siteProps.length>0);
+  if(!active.length){
+    body.innerHTML='<div style="color:var(--t3);font-size:10px;line-height:1.6">enable a modifier with<br>per-site props to tune here</div>';
+  } else {
+    active.forEach(m=>{
+      const sec=document.createElement('div');sec.className='sp-sec';sec.textContent=m.name;body.appendChild(sec);
+      m.siteProps.forEach(p=>{
+        const cur=s.props[m.id][p.id]??p.val;
+        const row=document.createElement('div');row.className='sp-row';
+        const vid='sp_'+si+'_'+m.id+'_'+p.id;
+        row.innerHTML=`<span class="sp-lbl">${p.lbl}</span>
+          <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${cur}" style="width:68px">
+          <span class="sp-val" id="${vid}">${p.fmt(cur)}</span>`;
+        const inp=row.querySelector('input');
+        inp.addEventListener('input',e=>{
+          e.stopPropagation();
+          s.props[m.id][p.id]=+inp.value;
+          document.getElementById(vid).textContent=p.fmt(+inp.value);
+          schedRender();
+        });
+        body.appendChild(row);
+      });
+    });
+  }
+  const px=Math.min(s.x+14,W-200),py=Math.max(s.y-20,5);
+  panel.style.left=px+'px';panel.style.top=py+'px';
+  panel.classList.add('vis');
+  schedRender();
+}
+
+function closeSP(){
+  selectedSite=-1;
+  document.getElementById('sitePanel').classList.remove('vis');
+  schedRender();
+}
+
+// ── ROUGH ─────────────────────────────────────────────────────────────────────
+function toggleRough(){
+  useRough=!useRough;
+  document.getElementById('roughBtn').classList.toggle('on',useRough);
+  document.getElementById('rleg').classList.toggle('vis',useRough);
+  document.getElementById('rx').classList.toggle('vis',useRough);
+  schedRender();
+}
+
+const RL=['full','½','⅓','¼'];
+function gs(k,v){
+  if(k==='N'){numSites=v;document.getElementById('vN').textContent=v;randomSites();}
+  else if(k==='R'){resDiv=v;document.getElementById('vR').textContent=RL[v-1];schedRender();}
+  else if(k==='A'){alpha=v/100;document.getElementById('vA').textContent=alpha.toFixed(2);schedRender();}
+  else if(k==='E'){eps=v;document.getElementById('vE').textContent=v;schedRender();}
+}
+
+function randomSites(){
+  const m=50;
+  sites=Array.from({length:numSites},()=>mkSite(m+Math.random()*(W-2*m),m+Math.random()*(H-2*m)));
+  closeSP();schedRender();
+}
+function clearSites(){sites=[];closeSP();schedRender();}
+
+let drag=-1,dragMoved=false;
+cv.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;
+  const p=cvp(e);drag=-1;dragMoved=false;
+  for(let i=0;i<sites.length;i++){if(d2(sites[i],p)<81){drag=i;return;}}
+  sites.push(mkSite(p.x,p.y));
+  document.getElementById('vN').textContent=sites.length;
+  closeSP();schedRender();
+});
+cv.addEventListener('mousemove',e=>{
+  if(drag<0)return;
+  const p=cvp(e);dragMoved=true;
+  sites[drag].x=p.x;sites[drag].y=p.y;
+  if(selectedSite===drag){
+    const panel=document.getElementById('sitePanel');
+    panel.style.left=Math.min(p.x+14,W-200)+'px';
+    panel.style.top=Math.max(p.y-20,5)+'px';
+  }
+  schedRender();
+});
+cv.addEventListener('mouseup',()=>{if(drag>=0&&!dragMoved) openSP(drag);drag=-1;});
+cv.addEventListener('contextmenu',e=>{
+  e.preventDefault();const p=cvp(e);
+  let bi=-1,bd=Infinity;
+  sites.forEach((s,i)=>{const dd=d2(s,p);if(dd<bd){bd=dd;bi=i;}});
+  if(bi>=0&&bd<400){
+    sites.splice(bi,1);
+    if(selectedSite===bi) closeSP();
+    else if(selectedSite>bi) selectedSite--;
+    schedRender();
+  }
+});
+function cvp(e){const r=cv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
+function d2(a,b){return(a.x-b.x)**2+(a.y-b.y)**2;}
+
+window.addEventListener('resize',resize);
+buildSidebar();
+resize();
+setTimeout(randomSites,90);
+</script>
+</body>
+</html>
